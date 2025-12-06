@@ -88,8 +88,8 @@ class AgentCore:
         # |----------------------------------------------------------|
         # |-----------------------Set up model-----------------------|
         # |----------------------------------------------------------|
-        from providers import get_llm_provider, LLMProviderConfig
-        from providers import get_embedding_provider, EmbeddingProviderConfig
+        from model_providers import get_llm_provider, LLMProviderConfig
+        from model_providers import get_embedding_provider, EmbeddingProviderConfig
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.settings import ModelSettings
         from pydantic_ai.providers.ollama import OllamaProvider as PydanticOllamaProvider
