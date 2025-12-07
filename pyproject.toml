@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-model-providers = { git = "git+https://github.com/mythrantic/model-providers.git" }
+model-providers = { git = "git+https://github.com/samletnorge/model-providers.git" }
 
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]
