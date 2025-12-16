@@ -14,9 +14,9 @@
 
 ```bash
 # From the machine-core directory
-pip install -e .
+uv add git+https://github.com/samletnorge/machine-core.git
 
-# Or with uv
+# Or with
 uv sync
 ```
 
@@ -135,5 +135,4 @@ ConcreteAgent (implementations)
 ```
 
 ## License
-
-MIT
+[LICENSE](./LICENSE.md)
