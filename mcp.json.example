@@ -3,7 +3,7 @@
   "inputs": [],
   "servers": {
     "task-manager": {
-      "url": "https://ca-prd-task-manager.livelywave-de593702.westeurope.azurecontainerapps.io/mcp",
+      "url": "https://task-manager.valiantlynx.com/mcp",
       "type": "http"
     },
     "mcp-server-chart": {
