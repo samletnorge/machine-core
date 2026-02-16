@@ -598,6 +598,11 @@ code {
     margin-bottom: 1.5rem;
 }
 
+.footer .branding {
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .features-grid {
