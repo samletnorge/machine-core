@@ -20,3 +20,9 @@ providers
 output.md
 mcp.json
 .env
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.next/
+frontend/out/

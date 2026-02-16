@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Meta Tags -->
+    <title>Machine Core - AI Agent Framework with MCP Integration</title>
+    <meta name="description" content="Machine Core is a flexible agent framework for building AI agents with MCP (Model Context Protocol) integration. Features clean architecture, multiple agent types, and streaming support.">
+    <meta name="keywords" content="AI agents, MCP, Model Context Protocol, machine learning, agent framework, Python, FastAPI, streaming AI">
+    <meta name="author" content="valiantlynx">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://machine-core.valiantlynx.com/">
+    <meta property="og:title" content="Machine Core - AI Agent Framework with MCP Integration">
+    <meta property="og:description" content="Build powerful AI agents with MCP integration. Clean architecture, flexible configuration, and multiple agent types.">
+    <meta property="og:image" content="https://machine-core.valiantlynx.com/og-image.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://machine-core.valiantlynx.com/">
+    <meta property="twitter:title" content="Machine Core - AI Agent Framework with MCP Integration">
+    <meta property="twitter:description" content="Build powerful AI agents with MCP integration. Clean architecture, flexible configuration, and multiple agent types.">
+    <meta property="twitter:image" content="https://machine-core.valiantlynx.com/og-image.png">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://machine-core.valiantlynx.com/">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/styles.css">
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Machine Core",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "A flexible agent framework for building AI agents with MCP (Model Context Protocol) integration",
+      "author": {
+        "@type": "Person",
+        "name": "valiantlynx"
+      },
+      "programmingLanguage": "Python"
+    }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>🤖 Machine Core</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#agents">Agents</a></li>
+                <li><a href="#quickstart">Quick Start</a></li>
+                <li><a href="#api">API</a></li>
+                <li><a href="https://github.com/samletnorge/machine-core" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <h1 class="hero-title">Machine Core</h1>
+            <p class="hero-subtitle">A flexible agent framework for building AI agents with MCP integration</p>
+            <div class="hero-buttons">
+                <a href="#quickstart" class="btn btn-primary">Get Started</a>
+                <a href="https://github.com/samletnorge/machine-core" class="btn btn-secondary" target="_blank">View on GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="features" class="section">
+            <div class="container">
+                <h2 class="section-title">Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <h3>Clean Architecture</h3>
+                        <p>Separation of infrastructure (AgentCore) and execution patterns (BaseAgent)</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔧</div>
+                        <h3>Flexible Configuration</h3>
+                        <p>Environment variables, direct parameters, or runtime overrides</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔌</div>
+                        <h3>MCP Integration</h3>
+                        <p>Easy integration with MCP servers and tools</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <h3>Multiple Agent Types</h3>
+                        <p>Chat, CLI, Receipt Processor, Twitter Bot, Memory Master, RAG Chat</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📦</div>
+                        <h3>Reusable Package</h3>
+                        <p>Install once, use in multiple projects</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Streaming Support</h3>
+                        <p>Real-time streaming responses for interactive applications</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="agents" class="section section-alt">
+            <div class="container">
+                <h2 class="section-title">Available Agents</h2>
+                <div class="agents-grid">
+                    <div class="agent-card">
+                        <h3>ChatAgent</h3>
+                        <p class="agent-description">Streaming chat agent</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Streamlit UI, web chat</p>
+                    </div>
+                    <div class="agent-card">
+                        <h3>CLIAgent</h3>
+                        <p class="agent-description">Non-streaming agent</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Terminal, cron jobs</p>
+                    </div>
+                    <div class="agent-card">
+                        <h3>ReceiptProcessorAgent</h3>
+                        <p class="agent-description">Vision + queue processing</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Document analysis</p>
+                    </div>
+                    <div class="agent-card">
+                        <h3>TwitterBotAgent</h3>
+                        <p class="agent-description">Scheduled posting agent</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Social media automation</p>
+                    </div>
+                    <div class="agent-card">
+                        <h3>RAGChatAgent</h3>
+                        <p class="agent-description">Knowledge graph integration</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Q&A, support</p>
+                    </div>
+                    <div class="agent-card">
+                        <h3>MemoryMasterAgent</h3>
+                        <p class="agent-description">Knowledge extraction</p>
+                        <p class="agent-usecase"><strong>Use Case:</strong> Graph maintenance</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="quickstart" class="section">
+            <div class="container">
+                <h2 class="section-title">Quick Start</h2>
+                
+                <div class="quickstart-section">
+                    <h3>Installation</h3>
+                    <pre><code>uv add git+https://github.com/samletnorge/machine-core.git</code></pre>
+                </div>
+
+                <div class="quickstart-section">
+                    <h3>Basic Usage</h3>
+                    <pre><code>from machine_core.agents import ChatAgent
+
+# Loads config from environment variables
+agent = ChatAgent()
+
+# Run streaming query
+async for event in agent.run("What is quantum computing?"):
+    if event['type'] == 'text_delta':
+        print(event['content'], end='', flush=True)</code></pre>
+                </div>
+
+                <div class="quickstart-section">
+                    <h3>Custom Configuration</h3>
+                    <pre><code>from machine_core import AgentConfig
+from machine_core.agents import CLIAgent
+
+# Create custom config
+config = AgentConfig(
+    max_iterations=20,
+    timeout=3600.0,
+    max_tool_retries=10
+)
+
+# Pass to agent
+agent = CLIAgent(
+    model_name="llama3.2:latest",
+    agent_config=config
+)
+
+result = await agent.run("Analyze this data")</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="api" class="section section-alt">
+            <div class="container">
+                <h2 class="section-title">API Information</h2>
+                <div class="api-info">
+                    <p>The Machine Core API provides the following endpoints:</p>
+                    <ul class="api-list">
+                        <li><code>GET /health</code> - Health check endpoint</li>
+                        <li><code>GET /api/info</code> - Get service information</li>
+                        <li><code>GET /metrics</code> - Prometheus metrics</li>
+                    </ul>
+                    <div class="api-example">
+                        <h3>Example: Get Service Info</h3>
+                        <pre><code>curl http://localhost:8000/api/info</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <h2 class="section-title">Architecture</h2>
+                <div class="architecture-diagram">
+                    <pre>
+AgentCore (infrastructure)
+  ├─ MCP toolset loading/validation
+  ├─ Model/provider configuration
+  ├─ Embedding backend setup
+  └─ Agent instance creation
+
+BaseAgent (execution patterns)
+  ├─ run() [abstract - implement per agent]
+  ├─ run_query() [sync execution]
+  ├─ run_query_stream() [streaming execution]
+  └─ Helper methods
+
+ConcreteAgent (implementations)
+  └─ Implements run() using base patterns
+                    </pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Machine Core. Licensed under the terms in LICENSE.md</p>
+            <p>
+                <a href="https://github.com/samletnorge/machine-core" target="_blank">GitHub</a> |
+                <a href="/docs/README.md" target="_blank">Documentation</a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="/script.js"></script>
+</body>
+</html>
