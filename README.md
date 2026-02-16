@@ -1,3 +1,5 @@
+[![Open in Coder](https://coder.valiantlynx.com/open-in-coder.svg)](https://coder.valiantlynx.com/templates/docker/workspace?param.git_repo=git@github.com:samletnorge/machine-core.git)
+
 # machine-core
 
 **A flexible agent framework for building AI agents with MCP (Model Context Protocol) integration.**
