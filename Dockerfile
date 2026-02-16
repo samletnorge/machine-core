@@ -1,26 +1,28 @@
 # Stage 1: Install dependencies
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS deps
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS deps
 WORKDIR /workspace
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV UV_PYTHON=python3.13
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
+	git \
+	build-essential \
+	gcc \
+	g++ \
+	libffi-dev \
+	libssl-dev \
+	python3-dev \
     openssh-client \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+	&& rm -rf /var/lib/apt/lists/*
 # Add GitHub to known hosts
 RUN mkdir -p /root/.ssh && \
     ssh-keyscan github.com >> /root/.ssh/known_hosts
-
 # Copy only dependency definitions first (for better caching)
 COPY pyproject.toml uv.lock* ./
 
+# Install only the dependencies
 ARG GITHUB_TOKEN
-# Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     echo "machine github.com login ${GITHUB_TOKEN} password x-oauth-basic" > /root/.netrc \
     && chmod 600 /root/.netrc \
@@ -28,45 +30,47 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     && rm /root/.netrc
 
 # Stage 2: Build the application image
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 WORKDIR /workspace/
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV UV_PYTHON=python3.13
 
-# Install system dependencies
+# Install curl, Azure CLI, and OpenCV dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+	curl \
+	apt-transport-https \
+	git \
+	lsb-release \
+	gnupg \
+	libgl1-mesa-glx \
+	libglib2.0-0 \
+	libsm6 \
+	libxext6 \
+	libxrender-dev \
+	libgomp1 \
+	&& curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
+	&& apt-get clean \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Copy application files first
+# Copy the dependencies from the previous stage
+COPY --from=deps /workspace/.venv/ /workspace/.venv/
+
+# Copy application code
 COPY . ./
 
-# Add the pyproject.toml file and uv.lock file
-COPY pyproject.toml uv.lock* ./
+# Ensure dependency files are present (should already be there from COPY . ./)
+# But explicitly copy them for clarity
+ADD pyproject.toml uv.lock* ./
 
-# Copy only the site-packages from the deps stage (not the whole venv with symlinks)
-COPY --from=deps /workspace/.venv/lib/python3.12/site-packages /workspace/.venv/lib/python3.12/site-packages
-
-# Create a fresh venv in this stage and sync to ensure correct Python linking
-ARG GITHUB_TOKEN
+# Install the project (dependencies are already installed)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    python3.12 -m venv /workspace/.venv \
-    && /workspace/.venv/bin/pip install --upgrade pip \
-    && echo "machine github.com login ${GITHUB_TOKEN} password x-oauth-basic" > /root/.netrc \
-    && chmod 600 /root/.netrc \
-    && uv sync --frozen --no-dev \
-    && rm /root/.netrc
+	uv sync --frozen --no-dev
 
 # Set the path to include the virtual environment
 ENV PATH="/workspace/.venv/bin:$PATH"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Expose the application port
+# Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "src.main:app", "--host=0.0.0.0", "--port=8000"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
