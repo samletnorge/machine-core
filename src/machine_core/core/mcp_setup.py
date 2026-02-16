@@ -185,8 +185,16 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
     Returns:
         List of configured MCP toolsets
     """
+    import httpx
+    
     type_map = {"sse": MCPServerSSE, "http": MCPServerStreamableHTTP}
     toolsets = []
+    
+    # Create custom httpx client with keepalive_expiry=0 (disable keepalive)
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout),
+        limits=httpx.Limits(keepalive_expiry=0)
+    )
     
     for tool in tools_urls:
         try:
@@ -223,7 +231,8 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                         timeout=timeout,
                         max_retries=max_retries,
                         allow_sampling=allow_sampling,
-                        read_timeout=timeout
+                        read_timeout=timeout,
+                        http_client=http_client
                     )
                     toolsets.append(server)
                     logger.info(f"Added {tool.type} tool: {tool.url}")
