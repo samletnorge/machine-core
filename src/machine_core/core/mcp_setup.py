@@ -192,6 +192,8 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
     # Create custom httpx client with keepalive_expiry=0 (disable keepalive)
     # Note: Shared client is acceptable since keepalive_expiry=0 means connections
     # are closed immediately after use, avoiding resource management issues.
+    # The AsyncClient object itself is not explicitly closed, but with keepalive
+    # disabled, no TCP connections are held open, minimizing resource usage.
     http_client = httpx.AsyncClient(
         timeout=httpx.Timeout(timeout),
         limits=httpx.Limits(keepalive_expiry=0)
