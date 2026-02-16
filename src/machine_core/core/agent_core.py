@@ -110,8 +110,8 @@ class AgentCore:
         )
         
         if is_ollama:
-            model_settings['extra_body'] = {'think': True}
-            logger.info("Enabled thinking mode for Ollama model")
+            model_settings['extra_body'] = {'think': True, 'keep_alive': 0}
+            logger.info("Enabled thinking mode for Ollama model with keep_alive=0")
         
         self.model = OpenAIChatModel(
             model_name=resolved.model_name,
