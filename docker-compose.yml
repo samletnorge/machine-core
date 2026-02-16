@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
       args:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       # Agent Config
       - AGENT_MAX_ITERATIONS=${AGENT_MAX_ITERATIONS:-10}
