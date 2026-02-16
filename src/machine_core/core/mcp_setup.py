@@ -1,6 +1,5 @@
 """MCP server configuration and validation utilities."""
 
-import httpx
 import json
 import os
 from pathlib import Path
@@ -189,16 +188,6 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
     type_map = {"sse": MCPServerSSE, "http": MCPServerStreamableHTTP}
     toolsets = []
     
-    # Create custom httpx client with keepalive_expiry=0 (disable keepalive)
-    # Note: Shared client is acceptable since keepalive_expiry=0 means connections
-    # are closed immediately after use, avoiding resource management issues.
-    # The AsyncClient object itself is not explicitly closed, but with keepalive
-    # disabled, no TCP connections are held open, minimizing resource usage.
-    http_client = httpx.AsyncClient(
-        timeout=httpx.Timeout(timeout),
-        limits=httpx.Limits(keepalive_expiry=0)
-    )
-    
     for tool in tools_urls:
         try:
             if tool.type == "stdio":
@@ -234,8 +223,7 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                         timeout=timeout,
                         max_retries=max_retries,
                         allow_sampling=allow_sampling,
-                        read_timeout=timeout,
-                        http_client=http_client
+                        read_timeout=timeout
                     )
                     toolsets.append(server)
                     logger.info(f"Added {tool.type} tool: {tool.url}")
