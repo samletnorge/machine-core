@@ -1,0 +1,33 @@
+services:
+  machine-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    ports:
+      - "8000:8000"
+    environment:
+      # Agent Config
+      - AGENT_MAX_ITERATIONS=${AGENT_MAX_ITERATIONS:-10}
+      - AGENT_TIMEOUT=${AGENT_TIMEOUT:-604800.0}
+      - AGENT_MAX_TOOL_RETRIES=${AGENT_MAX_TOOL_RETRIES:-15}
+      - AGENT_ALLOW_SAMPLING=${AGENT_ALLOW_SAMPLING:-true}
+      
+      # LLM Config
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - LLM_MODEL=${LLM_MODEL:-gpt-oss:latest}
+      
+      # Embedding Config
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-ollama}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      
+      # CORS
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000,http://localhost:3000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    restart: always

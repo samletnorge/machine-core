@@ -9,8 +9,11 @@
 - 🔌 **MCP Integration** - Easy integration with MCP servers and tools
 - 🚀 **Multiple Agent Types** - Chat, CLI, Receipt Processor, Twitter Bot, Memory Master, RAG Chat
 - 📦 **Reusable Package** - Install once, use in multiple projects
+- 🌐 **API & Documentation** - FastAPI service with comprehensive docs and SEO-optimized frontend
 
 ## Installation
+
+### As a Package
 
 ```bash
 # From the machine-core directory
@@ -19,6 +22,22 @@ uv add git+https://github.com/samletnorge/machine-core.git
 # Or with
 uv sync
 ```
+
+### As a Service (with API & Frontend)
+
+```bash
+# Using Docker Compose
+export GITHUB_TOKEN=your_token
+docker-compose up -d
+
+# Or run locally
+uvicorn src.main:app --host 0.0.0.0 --port 8000
+```
+
+Then access:
+- Frontend: http://localhost:8000/
+- API Docs: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
 
 ## Quick Start
 
@@ -133,6 +152,16 @@ BaseAgent (execution patterns)
 ConcreteAgent (implementations)
   └─ Implements run() using base patterns
 ```
+
+## API Documentation
+
+Machine Core includes a FastAPI service that provides:
+- RESTful API endpoints
+- Interactive API documentation (Swagger UI)
+- SEO-optimized frontend for documentation
+- Prometheus metrics for monitoring
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 
 ## License
 [LICENSE](./LICENSE.md)

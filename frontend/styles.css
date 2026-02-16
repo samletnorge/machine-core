@@ -1,0 +1,708 @@
+:root {
+    /* Core colors - black, white, accent */
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --accent: #000000;
+    
+    /* Muted variants */
+    --muted: #fafafa;
+    --muted-foreground: #737373;
+    
+    /* Border */
+    --border: #e5e5e5;
+    
+    /* Card */
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    
+    /* Radius */
+    --radius: 0.5rem;
+    
+    /* Grid pattern */
+    --grid-size: 40px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.6;
+    color: var(--foreground);
+    background-color: var(--background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+}
+
+/* Geometric grid background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    opacity: 0.3;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Navigation */
+.navbar {
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 1rem 0;
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-brand h1 {
+    font-size: 1.5rem;
+    color: var(--foreground);
+    font-weight: 600;
+}
+
+.logo-icon {
+    color: var(--foreground);
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--muted-foreground);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.nav-links a:hover {
+    color: var(--foreground);
+}
+
+/* Hero Section - Asymmetric Bold Design */
+.hero {
+    background: var(--accent);
+    color: var(--background);
+    padding: 12rem 0 10rem;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Large geometric shape - top right */
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 60%;
+    height: 140%;
+    background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.03) 30%, rgba(255, 255, 255, 0.03) 70%, transparent 70%);
+    transform: rotate(15deg);
+    pointer-events: none;
+}
+
+/* Large geometric shape - bottom left */
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -15%;
+    width: 50%;
+    height: 100%;
+    background: 
+        linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0.02) 60%, transparent 60%);
+    transform: rotate(-20deg);
+    pointer-events: none;
+}
+
+.hero .container {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title {
+    font-size: 6.5rem;
+    margin-bottom: 2rem;
+    font-weight: 900;
+    letter-spacing: -0.06em;
+    line-height: 0.95;
+    max-width: 900px;
+    position: relative;
+}
+
+/* Bold underline accent */
+.hero-title::after {
+    content: '';
+    position: absolute;
+    bottom: -1rem;
+    left: 0;
+    width: 200px;
+    height: 8px;
+    background: var(--background);
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    margin-bottom: 3.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 400;
+    max-width: 650px;
+    line-height: 1.6;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-block;
+    padding: 1.125rem 3rem;
+    border-radius: 0;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border: 3px solid transparent;
+    position: relative;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-primary {
+    background-color: var(--background);
+    color: var(--foreground);
+    border-color: var(--background);
+}
+
+.btn-primary:hover {
+    background-color: transparent;
+    color: var(--background);
+    border-color: var(--background);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--background);
+    border-color: var(--background);
+}
+
+.btn-secondary:hover {
+    background-color: var(--background);
+    color: var(--foreground);
+}
+
+/* Sections - Asymmetric Layout */
+.section {
+    padding: 8rem 0;
+    position: relative;
+}
+
+.section-alt {
+    background-color: var(--muted);
+}
+
+.section-alt::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, transparent 50%, var(--background) 50%, var(--background) 52%, transparent 52%);
+    background-size: 80px 100%;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.section-title {
+    font-size: 4rem;
+    margin-bottom: 5rem;
+    text-align: left;
+    color: var(--foreground);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    position: relative;
+    line-height: 1;
+}
+
+/* Large geometric accent bar */
+.section-title::before {
+    content: '';
+    position: absolute;
+    top: -2rem;
+    left: 0;
+    width: 120px;
+    height: 10px;
+    background: var(--foreground);
+}
+
+/* Features Grid - Asymmetric */
+.features-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 3rem;
+}
+
+.features-grid .feature-card:first-child {
+    grid-row: span 2;
+}
+
+.feature-card {
+    background: var(--card);
+    padding: 3rem;
+    border-radius: 0;
+    border: 3px solid var(--foreground);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Large diagonal stripe */
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 60%;
+    height: 200%;
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 20px,
+            var(--muted) 20px,
+            var(--muted) 22px
+        );
+    opacity: 0.3;
+}
+
+.feature-card:hover {
+    transform: translateX(5px) translateY(-5px);
+    transition: transform 0.2s ease;
+    box-shadow: -10px 10px 0 var(--foreground);
+}
+
+.feature-icon {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.feature-icon svg {
+    color: var(--foreground);
+    width: 48px;
+    height: 48px;
+    stroke-width: 2.5;
+}
+
+.feature-card h3 {
+    font-size: 1.75rem;
+    margin-bottom: 1.25rem;
+    color: var(--foreground);
+    font-weight: 800;
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.02em;
+}
+
+.feature-card p {
+    color: var(--muted-foreground);
+    line-height: 1.7;
+    font-size: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Agents Grid - Bold Asymmetric */
+.agents-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 3rem;
+}
+
+.agents-grid .agent-card:nth-child(3) {
+    grid-column: 3;
+    grid-row: 1 / 3;
+}
+
+.agent-card {
+    background: var(--card);
+    padding: 2.5rem;
+    border-radius: 0;
+    border: 3px solid var(--foreground);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Bold left accent bar */
+.agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 10px;
+    height: 100%;
+    background: var(--foreground);
+}
+
+/* Large number decoration */
+.agent-card::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    right: -20px;
+    width: 150px;
+    height: 150px;
+    background: 
+        repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 15px,
+            var(--muted) 15px,
+            var(--muted) 17px
+        );
+    opacity: 0.4;
+}
+
+.agent-card:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+.agent-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--foreground);
+    font-weight: 800;
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.02em;
+}
+
+.agent-description {
+    color: var(--muted-foreground);
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.agent-usecase {
+    color: var(--foreground);
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+}
+
+/* Quick Start Section - Bold Typography */
+.quickstart-section {
+    margin-bottom: 4rem;
+}
+
+.quickstart-section h3 {
+    font-size: 2.25rem;
+    margin-bottom: 1.5rem;
+    color: var(--foreground);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+pre {
+    background-color: var(--foreground);
+    padding: 3rem;
+    border-radius: 0;
+    overflow-x: auto;
+    border: 5px solid var(--foreground);
+    position: relative;
+}
+
+/* Bold left accent */
+pre::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 15px;
+    height: 100%;
+    background: var(--background);
+}
+
+code {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--background);
+    font-weight: 500;
+}
+
+/* API Section */
+.api-info {
+    background: var(--card);
+    padding: 2.5rem;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+}
+
+.api-list {
+    list-style: none;
+    margin: 1.5rem 0;
+    padding-left: 0;
+}
+
+.api-list li {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background-color: var(--muted);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--foreground);
+}
+
+.api-list code {
+    color: var(--foreground);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.api-example {
+    margin-top: 2.5rem;
+}
+
+.api-example h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+/* Architecture Diagram */
+.architecture-diagram {
+    background: var(--card);
+    padding: 2.5rem;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    position: relative;
+}
+
+/* Grid pattern overlay */
+.architecture-diagram::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
+    border-radius: var(--radius);
+    pointer-events: none;
+}
+
+.architecture-diagram pre {
+    background-color: var(--foreground);
+    color: var(--background);
+    padding: 2.5rem;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-size: 0.9rem;
+    border: 2px solid var(--foreground);
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+}
+
+/* Footer - Bold Asymmetric */
+.footer {
+    background-color: var(--accent);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 6rem 0;
+    text-align: left;
+    margin-top: 8rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Large geometric shape in footer */
+.footer::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: -20%;
+    width: 80%;
+    height: 150%;
+    background: 
+        linear-gradient(60deg, transparent 45%, rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.02) 55%, transparent 55%);
+    transform: rotate(-15deg);
+    pointer-events: none;
+}
+
+.footer a {
+    color: var(--background);
+    text-decoration: none;
+    margin: 0 1.5rem 0 0;
+    font-weight: 700;
+    font-size: 1.1rem;
+    position: relative;
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+}
+
+.footer p {
+    position: relative;
+    z-index: 1;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .features-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .features-grid .feature-card:first-child {
+        grid-row: span 1;
+        grid-column: span 2;
+    }
+    
+    .agents-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .agents-grid .agent-card:nth-child(3) {
+        grid-column: span 2;
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero {
+        padding: 8rem 0 6rem;
+        text-align: center;
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
+    }
+    
+    .hero-title::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .hero-buttons {
+        justify-content: center;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .navbar .container {
+        flex-direction: column;
+    }
+    
+    .section {
+        padding: 5rem 0;
+    }
+
+    .section-title {
+        font-size: 2.5rem;
+        text-align: center;
+    }
+    
+    .section-title::before {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .features-grid,
+    .agents-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .features-grid .feature-card:first-child {
+        grid-row: span 1;
+        grid-column: span 1;
+    }
+    
+    .agents-grid .agent-card:nth-child(3) {
+        grid-column: auto;
+        grid-row: auto;
+    }
+    
+    .footer {
+        text-align: center;
+    }
+}
+
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Subtle fade-in on load */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.feature-card,
+.agent-card {
+    animation: fadeIn 0.3s ease-out;
+}
