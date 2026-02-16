@@ -56,10 +56,20 @@ body {
     align-items: center;
 }
 
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .nav-brand h1 {
     font-size: 1.5rem;
     color: var(--foreground);
     font-weight: 600;
+}
+
+.logo-icon {
+    color: var(--foreground);
 }
 
 .nav-links {
@@ -176,9 +186,14 @@ body {
 }
 
 .feature-icon {
-    font-size: 2.5rem;
     margin-bottom: 1rem;
-    filter: grayscale(100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.feature-icon svg {
+    color: var(--foreground);
 }
 
 .feature-card h3 {
