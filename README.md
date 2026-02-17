@@ -9,7 +9,7 @@
 - 🎯 **Clean Architecture** - Separation of infrastructure (AgentCore) and execution patterns (BaseAgent)
 - 🔧 **Flexible Configuration** - Environment variables, direct parameters, or runtime overrides
 - 🔌 **MCP Integration** - Easy integration with MCP servers and tools
-- 🚀 **Multiple Agent Types** - Chat, CLI, Receipt Processor, Twitter Bot, Memory Master, RAG Chat
+- 🚀 **Multiple Agent Types** - Chat, CLI, Receipt Processor, Twitter Bot, Memory Master, RAG Chat, etc
 - 📦 **Reusable Package** - Install once, use in multiple projects
 - 🌐 **API & Documentation** - FastAPI service with comprehensive docs and SEO-optimized frontend
 
