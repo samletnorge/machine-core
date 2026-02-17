@@ -1,8 +1,44 @@
 // Smooth scrolling for navigation links
 document.addEventListener('DOMContentLoaded', () => {
+    // Mobile sidebar toggle
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+    const navOverlay = document.querySelector('.nav-overlay');
+
+    function openSidebar() {
+        hamburger.classList.add('active');
+        hamburger.setAttribute('aria-expanded', 'true');
+        navLinks.classList.add('open');
+        navOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+        hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        navLinks.classList.remove('open');
+        navOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    hamburger.addEventListener('click', () => {
+        if (navLinks.classList.contains('open')) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+
+    navOverlay.addEventListener('click', closeSidebar);
+
+    // Close sidebar when a link is clicked
+    navLinks.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', closeSidebar);
+    });
+
     // Add active class to nav links on scroll
     const sections = document.querySelectorAll('section[id]');
-    const navLinks = document.querySelectorAll('.nav-links a');
+    const allNavLinks = document.querySelectorAll('.nav-links a');
 
     const observerOptions = {
         root: null,
@@ -14,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const id = entry.target.getAttribute('id');
-                navLinks.forEach(link => {
+                allNavLinks.forEach(link => {
                     link.classList.remove('active');
                     if (link.getAttribute('href') === `#${id}`) {
                         link.classList.add('active');
