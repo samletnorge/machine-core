@@ -124,14 +124,14 @@ config = AgentConfig(
 
 ## Available Agents
 
-| Agent | Description | Use Case |
-|-------|-------------|----------|
-| `ChatAgent` | Streaming chat | Streamlit UI, web chat |
-| `CLIAgent` | Non-streaming | Terminal, cron jobs |
-| `ReceiptProcessorAgent` | Vision + queue | Document analysis |
-| `TwitterBotAgent` | Scheduled posting | Social media automation |
-| `RAGChatAgent` | Knowledge graph | Q&A, support |
-| `MemoryMasterAgent` | Knowledge extraction | Graph maintenance |
+| Agent | Description | Use Case | Live Demo |
+|-------|-------------|----------|-----------|
+| `ChatAgent` | Streaming chat | Streamlit UI, web chat | [Demo](https://mcp-client-chat.valiantlynx.com) |
+| `CLIAgent` | Non-streaming | Terminal, cron jobs | - |
+| `ReceiptProcessorAgent` | Vision + queue | Document analysis | [Demo](https://receipt-ocr.valiantlynx.com) |
+| `TwitterBotAgent` | Scheduled posting | Social media automation | - |
+| `RAGChatAgent` | Knowledge graph | Q&A, support | - |
+| `MemoryMasterAgent` | Knowledge extraction | Graph maintenance | - |
 
 ### ChatAgent
 
