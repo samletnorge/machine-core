@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="2" y="6" width="20" height="12" rx="2"/>
-  <path d="M2 10h20"/>
-  <circle cx="7" cy="15" r="1"/>
-  <circle cx="12" cy="15" r="1"/>
-  <circle cx="17" cy="15" r="1"/>
+<?xml version='1.0' encoding='iso-8859-1'?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 298 298" xmlns:xlink="http://www.w3.org/1999/xlink" enable-background="new 0 0 298 298">
+  <g>
+    <path d="M298,141.25h-34.101C259.9,81.531,210.047,34.166,149.333,34.166S38.767,81.531,34.767,141.25H0v16h34.798   c4.244,59.483,53.99,106.584,114.535,106.584s110.291-47.101,114.535-106.584H298V141.25z M248.167,149   c0,54.497-44.337,98.834-98.834,98.834S50.499,203.497,50.499,149s44.337-98.834,98.834-98.834S248.167,94.503,248.167,149z"/>
+    <polygon points="178.805,100.25 149.264,156.545 120.002,100.25 99,100.25 99,199.25 118,199.25 118,133.549 144.107,182.25    154.559,182.25 180,133.549 180,199.25 199,199.25 199,100.25  "/>
+  </g>
 </svg>
