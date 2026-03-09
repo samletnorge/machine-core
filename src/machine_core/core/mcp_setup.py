@@ -7,99 +7,183 @@ from loguru import logger
 from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP, MCPServerStdio
 
 
+class ToolFilterWrapper:
+    """Wraps an MCP toolset and filters out problematic tools on-the-fly.
+
+    This allows the MCP server to still load and function with valid tools,
+    even if some tools have malformed schemas.
+    """
+
+    def __init__(self, wrapped_toolset, problematic_tool_names: set | None = None):
+        """Initialize the wrapper.
+
+        Args:
+            wrapped_toolset: The MCP toolset to wrap
+            problematic_tool_names: Set of tool names to filter out
+        """
+        self.wrapped_toolset = wrapped_toolset
+        self.problematic_tool_names = problematic_tool_names or set()
+        self._original_class_name = wrapped_toolset.__class__.__name__
+
+    def __getattr__(self, name):
+        """Delegate all other attributes to the wrapped toolset."""
+        return getattr(self.wrapped_toolset, name)
+
+    async def list_tools(self):
+        """List tools, filtering out problematic ones."""
+        tools_response = await self.wrapped_toolset.list_tools()
+
+        # Handle different response formats
+        if hasattr(tools_response, "tools"):
+            original_tools = tools_response.tools
+            filtered_tools = [
+                tool
+                for tool in original_tools
+                if tool.name not in self.problematic_tool_names
+            ]
+            if len(filtered_tools) < len(original_tools):
+                filtered_count = len(original_tools) - len(filtered_tools)
+                logger.warning(
+                    f"Filtered out {filtered_count} problematic tool(s) from "
+                    f"{self._original_class_name}: {self.problematic_tool_names}"
+                )
+            tools_response.tools = filtered_tools
+            return tools_response
+        elif isinstance(tools_response, list):
+            filtered_tools = [
+                tool
+                for tool in tools_response
+                if tool.name not in self.problematic_tool_names
+            ]
+            if len(filtered_tools) < len(tools_response):
+                filtered_count = len(tools_response) - len(filtered_tools)
+                logger.warning(
+                    f"Filtered out {filtered_count} problematic tool(s) from "
+                    f"{self._original_class_name}: {self.problematic_tool_names}"
+                )
+            return filtered_tools
+
+        return tools_response
+
+
 async def validate_and_fix_toolsets(toolsets: list) -> tuple[list, list[str]]:
-    """Validate MCP toolsets and exclude tools with malformed schemas.
-    
-    This prevents crashes from malformed tool schemas, particularly:
-    - Empty Type arrays in parameter definitions (causes gpt-oss template crash)
-    - Missing required schema fields
-    
-    Tools with issues are automatically excluded to prevent crashes.
-    
+    """Validate MCP toolsets and filter problematic tools.
+
+    This prevents crashes from malformed tool schemas by filtering out individual
+    problematic tools, while keeping the MCP server and other valid tools operational.
+
     Args:
         toolsets: List of MCP toolset objects
-        
+
     Returns:
-        Tuple of (validated_toolsets, warning_messages)
+        Tuple of (validated_toolsets_with_filters, warning_messages)
     """
     validated_toolsets = []
     all_warnings = []
-    
+
     for toolset in toolsets:
         try:
             # Get tools from the toolset to validate their schemas
-            if hasattr(toolset, 'list_tools'):
+            if hasattr(toolset, "list_tools"):
                 tools_response = await toolset.list_tools()
-                logger.debug(f"tools_response type: {type(tools_response)}, value: {tools_response}")
-                
+                logger.debug(
+                    f"tools_response type: {type(tools_response)}, value: {tools_response}"
+                )
+
                 # Handle different response formats
-                if hasattr(tools_response, 'tools'):
+                if hasattr(tools_response, "tools"):
                     tools = tools_response.tools
                 elif isinstance(tools_response, list):
                     tools = tools_response
                 else:
                     tools = []
-                
-                logger.debug(f"Validating {len(tools)} tools from {toolset.__class__.__name__}")
-                
-                # Check each tool's schema
+
+                logger.debug(
+                    f"Validating {len(tools)} tools from {toolset.__class__.__name__}"
+                )
+
+                # Check each tool's schema and collect problematic tool names
+                problematic_tools = set()
                 issues_found = []
+
                 for tool in tools:
                     logger.debug(f"Checking tool: {tool.name}")
-                    if hasattr(tool, 'inputSchema') and tool.inputSchema:
+                    if hasattr(tool, "inputSchema") and tool.inputSchema:
                         schema = tool.inputSchema
                         logger.debug(f"Tool {tool.name} schema: {schema}")
-                        
+
                         # Check for properties with empty Type arrays
-                        if 'properties' in schema:
-                            for prop_name, prop_def in schema['properties'].items():
+                        if "properties" in schema:
+                            tool_has_issues = False
+                            for prop_name, prop_def in schema["properties"].items():
                                 logger.debug(f"  Property {prop_name}: {prop_def}")
                                 # Check if type is missing or empty
-                                if 'type' not in prop_def or not prop_def['type']:
-                                    issues_found.append(f"{tool.name}.{prop_name}: missing/empty type")
+                                if "type" not in prop_def or not prop_def["type"]:
+                                    issues_found.append(
+                                        f"  {tool.name}.{prop_name}: missing/empty type"
+                                    )
                                     logger.debug(f"    ❌ Missing/empty type!")
+                                    tool_has_issues = True
                                 # Check if type is an empty array
-                                elif isinstance(prop_def['type'], list) and len(prop_def['type']) == 0:
-                                    issues_found.append(f"{tool.name}.{prop_name}: empty type array")
+                                elif (
+                                    isinstance(prop_def["type"], list)
+                                    and len(prop_def["type"]) == 0
+                                ):
+                                    issues_found.append(
+                                        f"  {tool.name}.{prop_name}: empty type array"
+                                    )
                                     logger.debug(f"    ❌ Empty type array!")
+                                    tool_has_issues = True
+
+                            if tool_has_issues:
+                                problematic_tools.add(tool.name)
                     else:
                         logger.debug(f"Tool {tool.name} has no inputSchema")
-                
-                if issues_found:
+
+                if problematic_tools:
+                    # Wrap the toolset to filter out problematic tools
+                    wrapped_toolset = ToolFilterWrapper(toolset, problematic_tools)
+                    validated_toolsets.append(wrapped_toolset)
+
                     warning_msg = (
-                        f"⚠️  EXCLUDING toolset {toolset.__class__.__name__} due to schema issues:\n  " + 
-                        "\n  ".join(issues_found) +
-                        "\n  These issues cause crashes with LLM models (e.g., gpt-oss template bug)."
-                        "\n  Fix: Update the MCP server to use concrete types (str) instead of Optional[str]"
-                        "\n  This toolset will NOT be available until fixed."
+                        f"⚠️  Filtering problematic tools from {toolset.__class__.__name__}:\n"
+                        + "\n".join(issues_found)
+                        + "\n  These tools will be excluded from the available tools.\n"
+                        "  Fix: Update the MCP server to use concrete types (str) instead of Optional[str]"
                     )
-                    logger.error(warning_msg)
+                    logger.warning(warning_msg)
                     all_warnings.append(warning_msg)
-                    # DO NOT add this toolset - skip it entirely
-                    continue
                 else:
-                    # Schema is valid, add the toolset
-                    logger.debug(f"✓ Toolset {toolset.__class__.__name__} passed validation")
+                    # Schema is valid, add the toolset as-is
+                    logger.debug(
+                        f"✓ Toolset {toolset.__class__.__name__} passed validation"
+                    )
                     validated_toolsets.append(toolset)
             else:
                 # If can't validate, add it anyway (might be a different toolset type)
-                logger.debug(f"Toolset {toolset.__class__.__name__} has no list_tools method, adding anyway")
+                logger.debug(
+                    f"Toolset {toolset.__class__.__name__} has no list_tools method, adding anyway"
+                )
                 validated_toolsets.append(toolset)
-                
+
         except Exception as e:
-            logger.error(f"Error validating toolset {toolset.__class__.__name__}: {e}", exc_info=True)
-            # Skip toolsets that can't be validated - safer to exclude than crash
-            warning_msg = f"Excluding {toolset.__class__.__name__} due to validation error: {e}"
+            logger.error(
+                f"Error validating toolset {toolset.__class__.__name__}: {e}",
+                exc_info=True,
+            )
+            # Still add the toolset - it might work despite validation errors
+            logger.info(f"Adding {toolset.__class__.__name__} despite validation error")
+            validated_toolsets.append(toolset)
+            warning_msg = f"⚠️  {toolset.__class__.__name__} could not be validated: {e}"
             logger.warning(warning_msg)
             all_warnings.append(warning_msg)
-            continue
-    
+
     return validated_toolsets, all_warnings
 
 
 def load_mcp_servers_from_config(config_path: str = "mcp.json") -> list:
     """Load MCP server configurations from a JSON file.
-    
+
     Expected format (VS Code style):
     {
       "servers": {
@@ -115,56 +199,60 @@ def load_mcp_servers_from_config(config_path: str = "mcp.json") -> list:
       },
       "inputs": []  // optional
     }
-    
+
     Args:
         config_path: Path to the mcp.json configuration file
-        
+
     Returns:
         List of MCPServerModel instances
     """
     from .config import MCPServerModel
-    
+
     config_file = Path(config_path)
-    
+
     if not config_file.exists():
-        logger.warning(f"MCP config file not found at {config_path}, using empty server list")
+        logger.warning(
+            f"MCP config file not found at {config_path}, using empty server list"
+        )
         return []
-    
+
     try:
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             config_data = json.load(f)
-        
+
         servers = []
-        mcp_servers = config_data.get('servers', {})
-        
+        mcp_servers = config_data.get("servers", {})
+
         for server_name, server_config in mcp_servers.items():
-            transport = server_config.get('type', 'http')
-            
-            if transport == 'stdio':
+            transport = server_config.get("type", "http")
+
+            if transport == "stdio":
                 # For stdio, construct command from 'command' and 'args' fields
-                command = server_config.get('command', '')
-                args = server_config.get('args', [])
-                env = server_config.get('env', None)
-                
+                command = server_config.get("command", "")
+                args = server_config.get("args", [])
+                env = server_config.get("env", None)
+
                 # If args exist, join command and args into a single command string
                 if args:
-                    full_command = ' '.join([command] + args)
-                    servers.append(MCPServerModel(url=full_command, type='stdio', env=env))
+                    full_command = " ".join([command] + args)
+                    servers.append(
+                        MCPServerModel(url=full_command, type="stdio", env=env)
+                    )
                 elif command:
-                    servers.append(MCPServerModel(url=command, type='stdio', env=env))
+                    servers.append(MCPServerModel(url=command, type="stdio", env=env))
                 else:
                     logger.warning(f"Server {server_name} missing command, skipping")
             else:
                 # For http/sse, use 'url' field
-                url = server_config.get('url', '')
+                url = server_config.get("url", "")
                 if url:
                     servers.append(MCPServerModel(url=url, type=transport))
                 else:
                     logger.warning(f"Server {server_name} missing url, skipping")
-        
+
         logger.info(f"Loaded {len(servers)} MCP server(s) from {config_path}")
         return servers
-        
+
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse {config_path}: {e}")
         return []
@@ -173,21 +261,26 @@ def load_mcp_servers_from_config(config_path: str = "mcp.json") -> list:
         return []
 
 
-def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries: int = 15, allow_sampling: bool = False) -> list:
+def setup_mcp_toolsets(
+    tools_urls: list,
+    timeout: float = 604800.0,
+    max_retries: int = 15,
+    allow_sampling: bool = False,
+) -> list:
     """Set up MCP toolsets from server configurations.
-    
+
     Args:
         tools_urls: List of MCP server configurations
         timeout: Timeout for MCP connections in seconds
         max_retries: Maximum retries for MCP operations
         allow_sampling: Allow sampling in MCP operations
-        
+
     Returns:
         List of configured MCP toolsets
     """
     type_map = {"sse": MCPServerSSE, "http": MCPServerStreamableHTTP}
     toolsets = []
-    
+
     for tool in tools_urls:
         try:
             if tool.type == "stdio":
@@ -195,14 +288,14 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                 parts = tool.url.split()
                 command = parts[0]
                 args = parts[1:] if len(parts) > 1 else []
-                
+
                 # Prepare environment variables
                 env_vars = os.environ.copy() if tool.env else None
                 if env_vars and tool.env:
                     env_vars.update(tool.env)
                 elif tool.env:
                     env_vars = tool.env
-                
+
                 stdio_tool = MCPServerStdio(
                     command,
                     args=args,
@@ -212,9 +305,11 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                     max_retries=max_retries,
                     allow_sampling=allow_sampling,
                 )
-                
+
                 toolsets.append(stdio_tool)
-                logger.info(f"Added stdio tool: {command} {' '.join(args)} with env vars: {list(tool.env.keys()) if tool.env else 'none'}")
+                logger.info(
+                    f"Added stdio tool: {command} {' '.join(args)} with env vars: {list(tool.env.keys()) if tool.env else 'none'}"
+                )
             else:
                 # Handle http and sse type tools
                 if tool.type in type_map:
@@ -223,7 +318,7 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                         timeout=timeout,
                         max_retries=max_retries,
                         allow_sampling=allow_sampling,
-                        read_timeout=timeout
+                        read_timeout=timeout,
                     )
                     toolsets.append(server)
                     logger.info(f"Added {tool.type} tool: {tool.url}")
@@ -231,5 +326,5 @@ def setup_mcp_toolsets(tools_urls: list, timeout: float = 604800.0, max_retries:
                     logger.warning(f"Unknown tool type: {tool.type}")
         except Exception as e:
             logger.error(f"Failed to setup tool {tool.url}: {e}")
-    
+
     return toolsets
