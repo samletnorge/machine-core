@@ -65,6 +65,27 @@ class ToolFilterWrapper:
 
         return tools_response
 
+    async def call_tool(self, tool_name: str, tool_input: dict):
+        """Call a tool, rejecting filtered-out tools.
+
+        Args:
+            tool_name: Name of the tool to call
+            tool_input: Input parameters for the tool
+
+        Returns:
+            The tool result
+
+        Raises:
+            ValueError: If the tool is filtered out
+        """
+        if tool_name in self.problematic_tool_names:
+            error_msg = f"Tool '{tool_name}' has been filtered out due to schema issues"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        # Delegate to the wrapped toolset
+        return await self.wrapped_toolset.call_tool(tool_name, tool_input)
+
 
 async def validate_and_fix_toolsets(toolsets: list) -> tuple[list, list[str]]:
     """Validate MCP toolsets and filter problematic tools.

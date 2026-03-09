@@ -14,16 +14,16 @@ from loguru import logger
 
 class AgentCore:
     """Core agent infrastructure - handles MCP setup, model config, validation.
-    
+
     This is the low-level infrastructure that all agents share:
     - MCP toolset loading and validation
     - Model/provider configuration
     - Embedding backend
     - Agent instance creation
-    
+
     Don't subclass this directly - use BaseAgent instead.
     """
-    
+
     def __init__(
         self,
         model_name: Optional[str] = None,
@@ -33,7 +33,7 @@ class AgentCore:
         agent_config: Optional["AgentConfig"] = None,
     ):
         """Initialize core agent infrastructure.
-        
+
         Args:
             model_name: Override model from config
             tools_urls: List of MCP server configs
@@ -43,36 +43,64 @@ class AgentCore:
                          If None, loads from environment variables.
         """
         from .config import AgentConfig
-        
+
         # Use provided config or load from environment
         if agent_config is None:
             agent_config = AgentConfig.from_env()
-        
+
         self.agent_config = agent_config
-        
-        from .mcp_setup import load_mcp_servers_from_config, setup_mcp_toolsets, validate_and_fix_toolsets
-        
+
+        from .mcp_setup import (
+            load_mcp_servers_from_config,
+            setup_mcp_toolsets,
+            validate_and_fix_toolsets,
+        )
+
         # |----------------------------------------------------------|
         # |-----------------------Set up tools-----------------------|
         # |----------------------------------------------------------|
         if tools_urls is None:
             tools_urls = load_mcp_servers_from_config(mcp_config_path)
-        
+
         self.toolsets = setup_mcp_toolsets(
             tools_urls,
             timeout=self.agent_config.timeout,
             max_retries=self.agent_config.max_tool_retries,
-            allow_sampling=self.agent_config.allow_sampling
+            allow_sampling=self.agent_config.allow_sampling,
         )
-        
+
         # Validate toolsets
         self.validation_warnings = []
         try:
             import asyncio
+
             try:
                 loop = asyncio.get_running_loop()
-                logger.warning("Skipping toolset validation (already in running event loop)")
+                # Even in a running loop, we need to validate the toolsets
+                # Use asyncio.run in a thread if necessary
+                logger.info("Running toolset validation in existing event loop context")
+                import concurrent.futures
+                import threading
+
+                def validate_in_thread():
+                    """Validate toolsets in a separate thread with its own event loop."""
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        result = new_loop.run_until_complete(
+                            validate_and_fix_toolsets(self.toolsets)
+                        )
+                        return result
+                    finally:
+                        new_loop.close()
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(validate_in_thread)
+                    self.toolsets, self.validation_warnings = future.result(timeout=30)
+                    logger.info(f"Validated {len(self.toolsets)} toolset(s)")
+
             except RuntimeError:
+                # No running loop, create a new one
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
@@ -83,8 +111,8 @@ class AgentCore:
                 finally:
                     loop.close()
         except Exception as e:
-            logger.warning(f"Could not validate toolsets: {e}")
-        
+            logger.warning(f"Could not validate toolsets: {e}", exc_info=True)
+
         # |----------------------------------------------------------|
         # |-----------------------Set up model-----------------------|
         # |----------------------------------------------------------|
@@ -92,15 +120,17 @@ class AgentCore:
         from model_providers import get_embedding_provider, EmbeddingProviderConfig
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.settings import ModelSettings
-        from pydantic_ai.providers.ollama import OllamaProvider as PydanticOllamaProvider
-        
+        from pydantic_ai.providers.ollama import (
+            OllamaProvider as PydanticOllamaProvider,
+        )
+
         cfg = LLMProviderConfig.from_env()
         if model_name and model_name != cfg.model_name:
             cfg.model_name = model_name
         resolved = get_llm_provider(cfg)
-        
+
         is_ollama = isinstance(resolved.provider, PydanticOllamaProvider)
-        
+
         model_settings = ModelSettings(
             temperature=cfg.temperature,
             timeout=cfg.timeout,
@@ -108,17 +138,17 @@ class AgentCore:
             context_window=cfg.context_window,
             vision=cfg.vision,
         )
-        
+
         if is_ollama:
-            model_settings['extra_body'] = {'think': True, 'keep_alive': 0}
+            model_settings["extra_body"] = {"think": True, "keep_alive": 0}
             logger.info("Enabled thinking mode for Ollama model with keep_alive=0")
-        
+
         self.model = OpenAIChatModel(
             model_name=resolved.model_name,
             provider=resolved.provider,
             settings=model_settings,
         )
-        
+
         # |----------------------------------------------------------|
         # |-------------------Set up embedding backend---------------|
         # |----------------------------------------------------------|
@@ -131,7 +161,7 @@ class AgentCore:
             logger.warning(f"Embedding backend unavailable: {e}")
             self.embedding = None
             self.embedding_model_name = None
-        
+
         # |----------------------------------------------------------|
         # |-----------------------Create agent-----------------------|
         # |----------------------------------------------------------|
@@ -139,39 +169,46 @@ class AgentCore:
             model=self.model,
             toolsets=self.toolsets,
             system_prompt=system_prompt,
-            retries=self.agent_config.max_tool_retries
+            retries=self.agent_config.max_tool_retries,
         )
         self.usage = RequestUsage()
         self.message_history = []
-        
+
         # Validate tools after agent creation
         self._validate_agent_tools()
-    
+
     def _validate_agent_tools(self):
         """Validate tools in the created agent."""
         try:
-            if hasattr(self.agent, '_function_tools') and self.agent._function_tools:
+            if hasattr(self.agent, "_function_tools") and self.agent._function_tools:
                 issues_found = []
-                
+
                 for tool_name, tool_def in self.agent._function_tools.items():
                     logger.debug(f"Validating agent tool: {tool_name}")
-                    
-                    if hasattr(tool_def, 'parameters_json_schema'):
+
+                    if hasattr(tool_def, "parameters_json_schema"):
                         schema = tool_def.parameters_json_schema
                         logger.debug(f"Tool {tool_name} schema: {schema}")
-                        
-                        if isinstance(schema, dict) and 'properties' in schema:
-                            for prop_name, prop_def in schema['properties'].items():
-                                if 'type' not in prop_def or not prop_def['type']:
-                                    issues_found.append(f"{tool_name}.{prop_name}: missing/empty type")
-                                elif isinstance(prop_def['type'], list) and len(prop_def['type']) == 0:
-                                    issues_found.append(f"{tool_name}.{prop_name}: empty type array")
-                
+
+                        if isinstance(schema, dict) and "properties" in schema:
+                            for prop_name, prop_def in schema["properties"].items():
+                                if "type" not in prop_def or not prop_def["type"]:
+                                    issues_found.append(
+                                        f"{tool_name}.{prop_name}: missing/empty type"
+                                    )
+                                elif (
+                                    isinstance(prop_def["type"], list)
+                                    and len(prop_def["type"]) == 0
+                                ):
+                                    issues_found.append(
+                                        f"{tool_name}.{prop_name}: empty type array"
+                                    )
+
                 if issues_found:
                     logger.error(
-                        f"⚠️  WARNING: Agent has tools with schema issues:\n  " +
-                        "\n  ".join(issues_found) +
-                        "\n  These WILL cause crashes with some LLM models (e.g., gpt-oss template bug)!"
+                        f"⚠️  WARNING: Agent has tools with schema issues:\n  "
+                        + "\n  ".join(issues_found)
+                        + "\n  These WILL cause crashes with some LLM models (e.g., gpt-oss template bug)!"
                         "\n  Fix: Update MCP servers to use concrete types (str) instead of Optional[str]"
                         "\n  Consider using a different model or fixing the MCP server."
                     )
@@ -181,7 +218,7 @@ class AgentCore:
                 logger.debug("No function tools found in agent to validate")
         except Exception as e:
             logger.warning(f"Could not validate agent tools: {e}")
-    
+
     def get_validation_warnings(self) -> list[str]:
         """Get validation warnings from MCP server initialization."""
         return self.validation_warnings
