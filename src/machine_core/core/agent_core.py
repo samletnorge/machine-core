@@ -119,9 +119,13 @@ class AgentCore:
         from model_providers import get_llm_provider, LLMProviderConfig
         from model_providers import get_embedding_provider, EmbeddingProviderConfig
         from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.models.google import GoogleModel
         from pydantic_ai.settings import ModelSettings
         from pydantic_ai.providers.ollama import (
             OllamaProvider as PydanticOllamaProvider,
+        )
+        from pydantic_ai.providers.google import (
+            GoogleProvider as PydanticGoogleProvider,
         )
 
         cfg = LLMProviderConfig.from_env()
@@ -130,6 +134,7 @@ class AgentCore:
         resolved = get_llm_provider(cfg)
 
         is_ollama = isinstance(resolved.provider, PydanticOllamaProvider)
+        is_google = isinstance(resolved.provider, PydanticGoogleProvider)
 
         model_settings = ModelSettings(
             temperature=cfg.temperature,
@@ -142,12 +147,22 @@ class AgentCore:
         if is_ollama:
             model_settings["extra_body"] = {"think": True, "keep_alive": 0}
             logger.info("Enabled thinking mode for Ollama model with keep_alive=0")
+        elif is_google:
+            logger.info("Enabled thinking mode for Google model")
 
-        self.model = OpenAIChatModel(
-            model_name=resolved.model_name,
-            provider=resolved.provider,
-            settings=model_settings,
-        )
+        # Select the correct model class based on provider type
+        if is_google:
+            self.model = GoogleModel(
+                model_name=resolved.model_name,
+                provider=resolved.provider,
+                settings=model_settings,
+            )
+        else:
+            self.model = OpenAIChatModel(
+                model_name=resolved.model_name,
+                provider=resolved.provider,
+                settings=model_settings,
+            )
 
         # |----------------------------------------------------------|
         # |-------------------Set up embedding backend---------------|
