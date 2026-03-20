@@ -5,9 +5,10 @@ import os
 from pathlib import Path
 from loguru import logger
 from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP, MCPServerStdio
+from pydantic_ai.toolsets import AbstractToolset
 
 
-class ToolFilterWrapper:
+class ToolFilterWrapper(AbstractToolset):
     """Wraps an MCP toolset and filters out problematic tools on-the-fly.
 
     This allows the MCP server to still load and function with valid tools,
@@ -28,6 +29,12 @@ class ToolFilterWrapper:
     def __getattr__(self, name):
         """Delegate all other attributes to the wrapped toolset."""
         return getattr(self.wrapped_toolset, name)
+
+    def __call__(self, *args, **kwargs):
+        """Make the wrapper callable by delegating to wrapped toolset."""
+        if callable(self.wrapped_toolset):
+            return self.wrapped_toolset(*args, **kwargs)
+        raise TypeError(f"'{self.__class__.__name__}' object is not callable")
 
     async def list_tools(self):
         """List tools, filtering out problematic ones."""
