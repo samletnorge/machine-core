@@ -1473,8 +1473,8 @@ wheels = [
 
 [[package]]
 name = "model-providers"
-version = "0.0.3"
-source = { git = "https://github.com/samletnorge/model-providers.git#32e244bb5e834ada953c6c3223fc3aa70131ed14" }
+version = "0.0.4"
+source = { git = "https://github.com/samletnorge/model-providers.git#a862a6824665b6389cc99283f8e88ed2937cb72a" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-keyvault" },
