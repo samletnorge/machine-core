@@ -5,9 +5,10 @@ import os
 from pathlib import Path
 from loguru import logger
 from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP, MCPServerStdio
+from pydantic_ai.toolsets import AbstractToolset
 
 
-class ToolFilterWrapper:
+class ToolFilterWrapper(AbstractToolset):
     """Wraps an MCP toolset and filters out problematic tools on-the-fly.
 
     This allows the MCP server to still load and function with valid tools,
