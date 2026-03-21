@@ -8,8 +8,8 @@ This module defines:
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Union
-from pydantic_ai import ImageUrl
+from typing import Optional, Union, Any
+from pydantic_ai import ImageUrl, AgentRunResult
 from loguru import logger
 from .agent_core import AgentCore
 
@@ -57,7 +57,7 @@ class BaseAgent(AgentCore, ABC):
         self,
         query: str,
         image_paths: Optional[Union[str, Path, list[Union[str, Path]]]] = None,
-    ) -> dict:
+    ) -> Union[dict, AgentRunResult]:
         """Execute a single query with retry logic.
 
         Use this for:
@@ -67,7 +67,7 @@ class BaseAgent(AgentCore, ABC):
         - Non-streaming contexts
 
         Returns:
-            dict with agent result
+            AgentRunResult or dict with agent result
         """
         from .config import Config
 
@@ -97,42 +97,34 @@ class BaseAgent(AgentCore, ABC):
 
             logger.info(f"Processed {len(processed_images)} image(s)")
 
-            # Run with retries
-            max_retries = agent_config.MAX_ITERATIONS
-            retry_count = 0
+            # Build message content
+            if processed_images:
+                message_content = [query] + [
+                    ImageUrl(url=img) for img in processed_images
+                ]
+            else:
+                message_content = query
 
-            while retry_count < max_retries:
-                try:
-                    # Build message content
-                    if processed_images:
-                        message_content = [query] + [
-                            ImageUrl(url=img) for img in processed_images
-                        ]
-                    else:
-                        message_content = query
-
-                    # Execute
-                    result = await self.agent.run(
-                        message_content, message_history=self.message_history
-                    )
-                    if result:
-                        self.usage = result.usage()
-                        self.message_history = result.all_messages()
-                        return result
-                    else:
-                        logger.warning(f"Empty result on attempt {retry_count + 1}")
-                        retry_count += 1
-                except Exception as inner_e:
-                    logger.warning(f"Error on attempt {retry_count + 1}: {inner_e}")
-                    retry_count += 1
-                    if retry_count < max_retries:
-                        import asyncio
-
-                        await asyncio.sleep(1)
-
-            return {
-                "output": "Error: Maximum retries reached. Some tools failed to respond properly."
-            }
+            # Execute with pydantic-ai's internal error handling
+            # pydantic-ai has its own retry logic for tool calls, configured via the 'retries' parameter
+            # We should let it handle tool errors and pass them to the LLM for adjustment
+            # Only catch critical errors that prevent execution entirely
+            try:
+                result = await self.agent.run(
+                    message_content, message_history=self.message_history
+                )
+                if result:
+                    self.usage = result.usage()
+                    self.message_history = result.all_messages()
+                    return result
+                else:
+                    logger.warning("Empty result from agent execution")
+                    return {"output": "Error: Agent returned empty result."}
+            except Exception as e:
+                # Only log the error - don't retry the entire agent.run()
+                # The agent already has internal retries configured via the 'retries' parameter
+                logger.error(f"Critical error during agent execution: {e}")
+                return {"output": f"Error: {str(e)}"}
 
         except Exception as e:
             error_msg = f"Critical error during query execution: {str(e)}"
@@ -373,7 +365,7 @@ class BaseAgent(AgentCore, ABC):
     # Helper Methods
     # ========================================================================
 
-    async def _process_image(self, image_path: Union[str, Path]) -> str:
+    async def _process_image(self, image_path: Union[str, Path]) -> Optional[str]:
         """Process an image path/URL and return a data URL."""
         import base64
 
