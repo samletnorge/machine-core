@@ -5,10 +5,9 @@ import os
 from pathlib import Path
 from loguru import logger
 from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP, MCPServerStdio
-from pydantic_ai.toolsets import AbstractToolset
 
 
-class ToolFilterWrapper(AbstractToolset):
+class ToolFilterWrapper:
     """Wraps an MCP toolset and filters out problematic tools on-the-fly.
 
     This allows the MCP server to still load and function with valid tools,
@@ -29,12 +28,6 @@ class ToolFilterWrapper(AbstractToolset):
     def __getattr__(self, name):
         """Delegate all other attributes to the wrapped toolset."""
         return getattr(self.wrapped_toolset, name)
-
-    def __call__(self, *args, **kwargs):
-        """Make the wrapper callable by delegating to wrapped toolset."""
-        if callable(self.wrapped_toolset):
-            return self.wrapped_toolset(*args, **kwargs)
-        raise TypeError(f"'{self.__class__.__name__}' object is not callable")
 
     async def list_tools(self):
         """List tools, filtering out problematic ones."""
@@ -72,12 +65,14 @@ class ToolFilterWrapper(AbstractToolset):
 
         return tools_response
 
-    async def call_tool(self, tool_name: str, tool_input: dict):
+    async def call_tool(self, name: str, tool_args: dict, ctx, tool):
         """Call a tool, rejecting filtered-out tools.
 
         Args:
-            tool_name: Name of the tool to call
-            tool_input: Input parameters for the tool
+            name: Name of the tool to call
+            tool_args: Input parameters for the tool
+            ctx: The run context
+            tool: The tool definition
 
         Returns:
             The tool result
@@ -85,13 +80,13 @@ class ToolFilterWrapper(AbstractToolset):
         Raises:
             ValueError: If the tool is filtered out
         """
-        if tool_name in self.problematic_tool_names:
-            error_msg = f"Tool '{tool_name}' has been filtered out due to schema issues"
+        if name in self.problematic_tool_names:
+            error_msg = f"Tool '{name}' has been filtered out due to schema issues"
             logger.error(error_msg)
             raise ValueError(error_msg)
 
-        # Delegate to the wrapped toolset
-        return await self.wrapped_toolset.call_tool(tool_name, tool_input)
+        # Delegate to the wrapped toolset with correct signature
+        return await self.wrapped_toolset.call_tool(name, tool_args, ctx, tool)
 
 
 async def validate_and_fix_toolsets(toolsets: list) -> tuple[list, list[str]]:

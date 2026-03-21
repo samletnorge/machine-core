@@ -177,9 +177,9 @@ class AgentCore:
             self.embedding = None
             self.embedding_model_name = None
 
-        # |----------------------------------------------------------|
-        # |-----------------------Create agent-----------------------|
-        # |----------------------------------------------------------|
+         # |----------------------------------------------------------|
+         # |-----------------------Create agent-----------------------|
+         # |----------------------------------------------------------|
         self.agent = Agent(
             model=self.model,
             toolsets=self.toolsets,
@@ -188,6 +188,9 @@ class AgentCore:
         )
         self.usage = RequestUsage()
         self.message_history = []
+        
+        # Print total tools loaded
+        print(f"📦 Total toolsets: {len(self.toolsets)}")
 
         # Validate tools after agent creation
         self._validate_agent_tools()
