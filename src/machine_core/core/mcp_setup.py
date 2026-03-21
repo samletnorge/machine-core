@@ -26,45 +26,45 @@ class ToolFilterWrapper(AbstractToolset):
         self.problematic_tool_names = problematic_tool_names or set()
         self._original_class_name = wrapped_toolset.__class__.__name__
 
+    @property
+    def id(self) -> str:
+        """Return the ID of the wrapped toolset."""
+        if hasattr(self.wrapped_toolset, "id"):
+            return self.wrapped_toolset.id
+        return f"filtered-{self._original_class_name}"
+
     def __getattr__(self, name):
         """Delegate all other attributes to the wrapped toolset."""
         return getattr(self.wrapped_toolset, name)
 
-    async def list_tools(self):
-        """List tools, filtering out problematic ones."""
-        tools_response = await self.wrapped_toolset.list_tools()
+    async def get_tools(self, ctx) -> dict:
+        """Get tools, filtering out problematic ones.
 
-        # Handle different response formats
-        if hasattr(tools_response, "tools"):
-            original_tools = tools_response.tools
-            filtered_tools = [
-                tool
-                for tool in original_tools
-                if tool.name not in self.problematic_tool_names
-            ]
-            if len(filtered_tools) < len(original_tools):
-                filtered_count = len(original_tools) - len(filtered_tools)
-                logger.warning(
-                    f"Filtered out {filtered_count} problematic tool(s) from "
-                    f"{self._original_class_name}: {self.problematic_tool_names}"
-                )
-            tools_response.tools = filtered_tools
-            return tools_response
-        elif isinstance(tools_response, list):
-            filtered_tools = [
-                tool
-                for tool in tools_response
-                if tool.name not in self.problematic_tool_names
-            ]
-            if len(filtered_tools) < len(tools_response):
-                filtered_count = len(tools_response) - len(filtered_tools)
+        Args:
+            ctx: The run context
+
+        Returns:
+            Dict of tool name to ToolsetTool
+        """
+        tools_dict = await self.wrapped_toolset.get_tools(ctx)
+
+        # Filter out problematic tools from the dict
+        if isinstance(tools_dict, dict):
+            filtered_tools = {
+                name: tool
+                for name, tool in tools_dict.items()
+                if name not in self.problematic_tool_names
+            }
+            if len(filtered_tools) < len(tools_dict):
+                filtered_count = len(tools_dict) - len(filtered_tools)
                 logger.warning(
                     f"Filtered out {filtered_count} problematic tool(s) from "
                     f"{self._original_class_name}: {self.problematic_tool_names}"
                 )
             return filtered_tools
 
-        return tools_response
+        # Fallback if not a dict
+        return tools_dict
 
     async def call_tool(self, name: str, tool_args: dict, ctx, tool):
         """Call a tool, rejecting filtered-out tools.
