@@ -29,8 +29,15 @@ class ToolFilterWrapper(AbstractToolset):
     @property
     def id(self) -> str:
         """Return the ID of the wrapped toolset."""
-        if hasattr(self.wrapped_toolset, "id"):
-            return self.wrapped_toolset.id
+        # Get ID from wrapped toolset if it has one
+        try:
+            wrapped_id = self.wrapped_toolset.id
+            if wrapped_id:
+                return f"filtered-{wrapped_id}"
+        except:
+            pass
+
+        # Fallback to class name
         return f"filtered-{self._original_class_name}"
 
     def __getattr__(self, name):
