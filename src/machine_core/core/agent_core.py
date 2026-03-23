@@ -118,51 +118,16 @@ class AgentCore:
         # |----------------------------------------------------------|
         from model_providers import get_llm_provider, LLMProviderConfig
         from model_providers import get_embedding_provider, EmbeddingProviderConfig
-        from pydantic_ai.models.openai import OpenAIChatModel
-        from pydantic_ai.models.google import GoogleModel
-        from pydantic_ai.settings import ModelSettings
-        from pydantic_ai.providers.ollama import (
-            OllamaProvider as PydanticOllamaProvider,
-        )
-        from pydantic_ai.providers.google import (
-            GoogleProvider as PydanticGoogleProvider,
-        )
 
         cfg = LLMProviderConfig.from_env()
         if model_name and model_name != cfg.model_name:
             cfg.model_name = model_name
         resolved = get_llm_provider(cfg)
 
-        is_ollama = isinstance(resolved.provider, PydanticOllamaProvider)
-        is_google = isinstance(resolved.provider, PydanticGoogleProvider)
-
-        model_settings = ModelSettings(
-            temperature=cfg.temperature,
-            timeout=cfg.timeout,
-            max_tokens=cfg.max_tokens,
-            context_window=cfg.context_window,
-            vision=cfg.vision,
-        )
-
-        if is_ollama:
-            model_settings["extra_body"] = {"think": True, "keep_alive": 0}
-            logger.info("Enabled thinking mode for Ollama model with keep_alive=0")
-        elif is_google:
-            logger.info("Enabled thinking mode for Google model")
-
-        # Select the correct model class based on provider type
-        if is_google:
-            self.model = GoogleModel(
-                model_name=resolved.model_name,
-                provider=resolved.provider,
-                settings=model_settings,
-            )
-        else:
-            self.model = OpenAIChatModel(
-                model_name=resolved.model_name,
-                provider=resolved.provider,
-                settings=model_settings,
-            )
+        # model-providers now returns a fully-constructed pydantic-ai model
+        # (OpenAIChatModel, GoogleModel, or AnthropicModel) with settings baked in.
+        self.model = resolved.model
+        self.provider_type = resolved.provider_type
 
         # |----------------------------------------------------------|
         # |-------------------Set up embedding backend---------------|
@@ -177,9 +142,9 @@ class AgentCore:
             self.embedding = None
             self.embedding_model_name = None
 
-         # |----------------------------------------------------------|
-         # |-----------------------Create agent-----------------------|
-         # |----------------------------------------------------------|
+        # |----------------------------------------------------------|
+        # |-----------------------Create agent-----------------------|
+        # |----------------------------------------------------------|
         self.agent = Agent(
             model=self.model,
             toolsets=self.toolsets,
@@ -188,7 +153,7 @@ class AgentCore:
         )
         self.usage = RequestUsage()
         self.message_history = []
-        
+
         # Print total tools loaded
         print(f"📦 Total toolsets: {len(self.toolsets)}")
 
