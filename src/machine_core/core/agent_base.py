@@ -419,72 +419,13 @@ class BaseAgent(AgentCore, ABC):
     # ========================================================================
 
     async def _process_image(self, image_path: Union[str, Path]) -> Optional[str]:
-        """Process an image path/URL and return a data URL."""
-        import base64
+        """Process an image path/URL and return a data URL.
 
-        if not image_path:
-            return None
+        Delegates to FileProcessor.prepare_for_vlm() for the actual work.
+        """
+        from .file_processor import FileProcessor
 
-        image_path = str(image_path)
-
-        # Already a data URL
-        if image_path.startswith("data:image/"):
-            logger.info(
-                f"Using provided data URL (first 100 chars): {image_path[:100]}..."
-            )
-            return image_path
-
-        # HTTP/HTTPS URL
-        if image_path.startswith("http://") or image_path.startswith("https://"):
-            logger.info(f"Fetching image from URL: {image_path}")
-            try:
-                import httpx
-
-                async with httpx.AsyncClient() as http_client:
-                    response = await http_client.get(image_path)
-                    response.raise_for_status()
-                    image_bytes = response.content
-
-                    content_type = response.headers.get("content-type", "")
-                    if "png" in content_type or image_path.endswith(".png"):
-                        img_format = "png"
-                    elif (
-                        "jpeg" in content_type
-                        or "jpg" in content_type
-                        or image_path.endswith((".jpg", ".jpeg"))
-                    ):
-                        img_format = "jpeg"
-                    elif "gif" in content_type or image_path.endswith(".gif"):
-                        img_format = "gif"
-                    elif "webp" in content_type or image_path.endswith(".webp"):
-                        img_format = "webp"
-                    else:
-                        img_format = "png"
-
-                    encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-                    data_url = f"data:image/{img_format};base64,{encoded_image}"
-                    logger.info(f"Fetched and encoded image from URL")
-                    return data_url
-            except Exception as e:
-                logger.error(f"Failed to fetch image: {e}")
-                raise
-
-        # Local file path
-        try:
-            image_path_obj = Path(image_path)
-            if not image_path_obj.exists():
-                raise FileNotFoundError(f"Image file not found: {image_path}")
-
-            with open(image_path_obj, "rb") as f:
-                encoded_image = base64.b64encode(f.read()).decode("utf-8")
-
-            img_format = image_path_obj.suffix[1:] or "png"
-            data_url = f"data:image/{img_format};base64,{encoded_image}"
-            logger.info(f"Encoded local image to base64")
-            return data_url
-        except Exception as e:
-            logger.error(f"Failed to encode image: {e}")
-            raise
+        return await FileProcessor.prepare_for_vlm(image_path)
 
     async def get_server_info(self) -> list[dict]:
         """Get information about connected MCP servers and their tools."""
