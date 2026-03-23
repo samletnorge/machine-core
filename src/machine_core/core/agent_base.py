@@ -362,6 +362,59 @@ class BaseAgent(AgentCore, ABC):
             yield {"type": "error", "content": error_msg}
 
     # ========================================================================
+    # Iteration Pattern - Step-by-step execution with custom processing
+    # ========================================================================
+
+    async def run_query_iter(
+        self,
+        query: str,
+    ):
+        """Execute a query using agent.iter() for step-by-step control.
+
+        Use this for:
+        - Per-step logging (tool calls, tool results, retries)
+        - Custom processing of each agent step
+        - Fine-grained monitoring of agent execution
+        - Agents with dynamic tools that need detailed observability
+
+        This is an async generator that yields (node, step_num) tuples.
+        After the generator is exhausted, access the result via the returned value.
+
+        Example:
+            result = None
+            async for node, step_num in self.run_query_iter(query):
+                if isinstance(node, CallToolsNode):
+                    # log tool calls
+                    pass
+            # result is available via agent_run.result after iteration
+
+        Yields:
+            Tuple of (node, step_num) where node is a pydantic-ai graph node
+            and step_num is the 1-indexed step number.
+
+        Returns:
+            The agent run result (accessible after iteration completes).
+        """
+        try:
+            async with self.agent.iter(query) as agent_run:
+                step = 0
+                async for node in agent_run:
+                    step += 1
+                    yield node, step
+
+                # Update usage and history from the completed run
+                if agent_run.result:
+                    result = agent_run.result
+                    if hasattr(result, "usage"):
+                        self.usage = result.usage()
+                    if hasattr(result, "all_messages"):
+                        self.message_history = result.all_messages()
+
+        except Exception as e:
+            logger.error(f"Error during agent iteration: {e}", exc_info=True)
+            raise
+
+    # ========================================================================
     # Helper Methods
     # ========================================================================
 
