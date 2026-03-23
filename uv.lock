@@ -170,11 +170,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/63/5f/67db29c6e5d16c8c9c4652d3efb934d89cb750cad201539141781d8eae14/anthropic-0.86.0-py3-none-any.whl", hash = "sha256:9d2bbd339446acce98858c5627d33056efe01f70435b22b63546fe7edae0cd57", size = 469400, upload-time = "2026-03-18T18:43:06.526Z" },
 ]
 
-[package.optional-dependencies]
-vertex = [
-    { name = "google-auth", extra = ["requests"] },
-]
-
 [[package]]
 name = "anyio"
 version = "4.12.1"
@@ -1478,16 +1473,12 @@ wheels = [
 
 [[package]]
 name = "model-providers"
-version = "0.0.7"
-source = { git = "https://github.com/samletnorge/model-providers.git#a169de474369cedc1f21d630f816bb5af9a89200" }
+version = "0.0.8"
+source = { git = "https://github.com/samletnorge/model-providers.git#7bcece59d2ab4abacf0b74aa9464479d0fbe4c57" }
 dependencies = [
-    { name = "anthropic", extra = ["vertex"] },
     { name = "azure-identity" },
     { name = "azure-keyvault" },
-    { name = "google-genai" },
-    { name = "httpx" },
     { name = "loguru" },
-    { name = "openai" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
 ]
