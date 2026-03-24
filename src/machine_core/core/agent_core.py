@@ -202,21 +202,28 @@ class AgentCore:
     def rebuild_agent(
         self,
         tools: Optional[List[Tool]] = None,
+        toolsets: Optional[list] = None,
         system_prompt: Optional[str] = None,
         retries: Optional[int] = None,
     ):
-        """Recreate the agent with new tools and/or system prompt.
+        """Recreate the agent with new tools, toolsets, and/or system prompt.
 
-        Reuses the same model and MCP toolsets. Useful for per-request
-        tool sets (e.g., RAG-filtered tools that change per query).
+        Useful for per-request tool sets (e.g., RAG-filtered tools that
+        change per query) and for mixed-mode filtering where both OpenAPI
+        tools and MCP toolsets are updated each request.
 
         Args:
             tools: New list of dynamic tools. If None, keeps existing self.tools.
+            toolsets: New list of MCP toolsets (possibly wrapped with
+                ToolFilterWrapper via filter_mcp_toolsets()). If None,
+                keeps existing self.toolsets.
             system_prompt: New system prompt. If None, keeps existing.
             retries: Override retry count. If None, uses agent_config default.
         """
         if tools is not None:
             self.tools = tools
+        if toolsets is not None:
+            self.toolsets = toolsets
         if system_prompt is not None:
             self.system_prompt = system_prompt
 

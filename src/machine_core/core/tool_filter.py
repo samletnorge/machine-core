@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 
 from .vector_store import Embedder, VectorStore, SearchResult
+from .mcp_setup import ToolFilterWrapper
 
 
 @dataclass
@@ -490,3 +491,105 @@ class ToolFilterManager:
             result.names.add(name)
             result.by_source.setdefault(source, set()).add(name)
         return result
+
+
+async def filter_mcp_toolsets(
+    toolsets: list,
+    relevant_names: Set[str],
+) -> list:
+    """Wrap MCP toolsets to hide irrelevant tools from the LLM context.
+
+    Takes MCP toolsets and a set of relevant tool names (typically from
+    ToolFilterResult.by_source["mcp"]) and returns toolsets wrapped with
+    ToolFilterWrapper to exclude everything NOT in relevant_names.
+
+    This is the MCP counterpart to passing tool_filter= to
+    generate_tools_from_openapi() for OpenAPI tools.
+
+    Usage:
+        result = await manager.filter("Create an invoice")
+
+        # OpenAPI side:
+        openapi_tools = generate_tools_from_openapi(
+            spec, base_url, auth_headers,
+            tool_filter=result.by_source.get("openapi"),
+        )
+
+        # MCP side:
+        filtered_toolsets = await filter_mcp_toolsets(
+            toolsets,
+            relevant_names=result.by_source.get("mcp", set()),
+        )
+
+        agent_core.rebuild_agent(tools=openapi_tools, toolsets=filtered_toolsets)
+
+    Args:
+        toolsets: List of MCP toolset objects (MCPServerStdio, MCPServerSSE, etc.)
+        relevant_names: Set of MCP tool names to KEEP visible. All other
+            tools discovered in the toolsets will be hidden from the LLM.
+
+    Returns:
+        List of toolsets, each wrapped with ToolFilterWrapper if it has
+        tools to hide. Toolsets with no discoverable tools or where all
+        tools are relevant are returned unwrapped.
+    """
+    filtered_toolsets = []
+
+    for toolset in toolsets:
+        try:
+            if not hasattr(toolset, "list_tools"):
+                # Can't discover tools — pass through as-is
+                filtered_toolsets.append(toolset)
+                continue
+
+            # Discover all tool names from this toolset
+            tools_response = await toolset.list_tools()
+            if hasattr(tools_response, "tools"):
+                tools = tools_response.tools
+            elif isinstance(tools_response, list):
+                tools = tools_response
+            else:
+                tools = []
+
+            all_names = {
+                getattr(t, "name", "") for t in tools if getattr(t, "name", "")
+            }
+
+            # Compute names to hide: everything NOT in relevant_names
+            names_to_hide = all_names - relevant_names
+
+            if names_to_hide:
+                wrapped = ToolFilterWrapper(
+                    toolset, problematic_tool_names=names_to_hide
+                )
+                filtered_toolsets.append(wrapped)
+                logger.info(
+                    f"Filtered MCP toolset {type(toolset).__name__}: "
+                    f"keeping {len(all_names - names_to_hide)}/{len(all_names)} tools, "
+                    f"hiding {len(names_to_hide)}"
+                )
+            else:
+                # All tools are relevant — no wrapping needed
+                filtered_toolsets.append(toolset)
+                logger.debug(
+                    f"MCP toolset {type(toolset).__name__}: "
+                    f"all {len(all_names)} tools are relevant, no filtering"
+                )
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to filter MCP toolset {type(toolset).__name__}: {e}. "
+                f"Passing through unfiltered."
+            )
+            filtered_toolsets.append(toolset)
+
+    total_kept = sum(
+        1 for ts in filtered_toolsets if not isinstance(ts, ToolFilterWrapper)
+    )
+    total_wrapped = len(filtered_toolsets) - total_kept
+    logger.info(
+        f"filter_mcp_toolsets: {len(filtered_toolsets)} toolset(s) "
+        f"({total_wrapped} filtered, {total_kept} unfiltered)"
+    )
+
+    return filtered_toolsets

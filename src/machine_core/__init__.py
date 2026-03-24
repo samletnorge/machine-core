@@ -13,6 +13,10 @@ v0.4.0 adds:
 - VectorStore + Embedder: multi-table LanceDB vector search
 - ToolFilterManager: RAG-based tool filtering for OpenAPI + MCP
 - DocumentStore: convenience facade for single-table document RAG
+
+v0.4.1 adds:
+- filter_mcp_toolsets(): wraps MCP toolsets to hide irrelevant tools after RAG filtering
+- rebuild_agent() now accepts toolsets= parameter for mixed-mode (OpenAPI + MCP) filtering
 """
 
 from .core.config import AgentConfig, MCPServerModel, SYSTEM_PROMPT
@@ -21,7 +25,7 @@ from .core.agent_base import BaseAgent
 from .core.file_processor import FileProcessor, ProcessedFile
 from .core.openapi_tools import generate_tools_from_openapi, fetch_openapi_spec
 from .core.vector_store import VectorStore, Embedder, SearchResult
-from .core.tool_filter import ToolFilterManager, ToolFilterResult
+from .core.tool_filter import ToolFilterManager, ToolFilterResult, filter_mcp_toolsets
 from .core.document_store import DocumentStore
 
 __all__ = [
@@ -44,6 +48,7 @@ __all__ = [
     # Tool filtering (v0.4.0)
     "ToolFilterManager",
     "ToolFilterResult",
+    "filter_mcp_toolsets",
     # Document store (v0.4.0)
     "DocumentStore",
 ]
