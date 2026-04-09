@@ -198,16 +198,45 @@ async def validate_and_fix_toolsets(toolsets: list) -> tuple[list, list[str]]:
                 validated_toolsets.append(toolset)
 
         except Exception as e:
-            logger.error(
-                f"Error validating toolset {toolset.__class__.__name__}: {e}",
-                exc_info=True,
+            # Determine the server URL for better logging
+            server_url = getattr(toolset, "url", toolset.__class__.__name__)
+            error_str = str(e).lower()
+
+            # If the server actively rejected us (404 / session terminated /
+            # connection refused), it won't work at runtime either -- skip it
+            # to prevent one bad server from killing all queries.
+            is_connection_error = any(
+                indicator in error_str
+                for indicator in [
+                    "session terminated",
+                    "404",
+                    "connection refused",
+                    "connect call failed",
+                    "name or service not known",
+                    "no route to host",
+                    "connection reset",
+                ]
             )
-            # Still add the toolset - it might work despite validation errors
-            logger.info(f"Adding {toolset.__class__.__name__} despite validation error")
-            validated_toolsets.append(toolset)
-            warning_msg = f"⚠️  {toolset.__class__.__name__} could not be validated: {e}"
-            logger.warning(warning_msg)
-            all_warnings.append(warning_msg)
+
+            if is_connection_error:
+                warning_msg = f"Excluding unreachable MCP server {server_url}: {e}"
+                logger.warning(warning_msg)
+                all_warnings.append(warning_msg)
+            else:
+                # Non-connection errors (e.g. schema parse issues) -- keep
+                # the server since it may still work at runtime.
+                logger.error(
+                    f"Error validating toolset {server_url}: {e}",
+                    exc_info=True,
+                )
+                logger.info(f"Adding {server_url} despite validation error")
+                validated_toolsets.append(toolset)
+                warning_msg = (
+                    f"{toolset.__class__.__name__} ({server_url}) "
+                    f"could not be validated: {e}"
+                )
+                logger.warning(warning_msg)
+                all_warnings.append(warning_msg)
 
     return validated_toolsets, all_warnings
 

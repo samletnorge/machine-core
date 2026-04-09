@@ -140,6 +140,18 @@ class AgentCore:
             except Exception as e:
                 logger.warning(f"Could not validate toolsets: {e}", exc_info=True)
 
+            # Reset async state on all toolsets after validation.
+            # Validation opens/closes MCP connections on a temporary event
+            # loop, leaving asyncio.Lock objects bound to that (now-dead) loop.
+            # Calling __post_init__() re-creates locks so the toolsets work
+            # correctly when the caller's actual event loop runs them later.
+            for ts in self.toolsets:
+                # Unwrap ToolFilterWrapper to reach the underlying MCPServer
+                inner = getattr(ts, "wrapped_toolset", ts)
+                if hasattr(inner, "__post_init__"):
+                    inner.__post_init__()
+                    logger.debug(f"Reset async state for {inner.__class__.__name__}")
+
         # |----------------------------------------------------------|
         # |-----------------------Set up model-----------------------|
         # |----------------------------------------------------------|

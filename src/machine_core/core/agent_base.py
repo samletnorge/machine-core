@@ -53,6 +53,60 @@ class BaseAgent(AgentCore, ABC):
     # Execution Patterns - Use these in your run() method
     # ========================================================================
 
+    def _reset_toolset_state(self):
+        """Reset async state on all MCP toolsets for the current event loop.
+
+        MCPServer objects cache an asyncio.Lock (_enter_lock) that is bound to
+        the event loop that was active when the lock was created.  Callers like
+        Streamlit create a fresh event loop for every request; without resetting,
+        the old lock is invalid and causes 'Session terminated' errors.
+        """
+        for ts in self.toolsets:
+            inner = getattr(ts, "wrapped_toolset", ts)
+            if hasattr(inner, "__post_init__"):
+                inner.__post_init__()
+
+    async def _remove_bad_toolsets_and_rebuild(self, error) -> bool:
+        """Inspect an MCP error, remove the offending toolset, and rebuild.
+
+        Returns True if a toolset was removed and the agent was rebuilt,
+        False if nothing could be done (caller should propagate the error).
+        """
+        if not self.toolsets:
+            return False
+
+        # Try to identify which server(s) failed by probing each one
+        bad_toolsets = []
+        for ts in self.toolsets:
+            inner = getattr(ts, "wrapped_toolset", ts)
+            if hasattr(inner, "__post_init__"):
+                inner.__post_init__()
+            try:
+                async with ts:
+                    pass  # connect + disconnect; just testing
+            except Exception as probe_err:
+                server_url = getattr(getattr(ts, "wrapped_toolset", ts), "url", str(ts))
+                logger.warning(
+                    f"MCP server {server_url} is unhealthy, removing: {probe_err}"
+                )
+                bad_toolsets.append(ts)
+
+        if not bad_toolsets:
+            return False
+
+        remaining = [ts for ts in self.toolsets if ts not in bad_toolsets]
+        if len(remaining) == len(self.toolsets):
+            return False  # nothing removed
+
+        logger.info(
+            f"Removed {len(bad_toolsets)} unhealthy MCP server(s), "
+            f"{len(remaining)} remaining"
+        )
+        self.rebuild_agent(toolsets=remaining)
+        # Reset async state on the surviving toolsets
+        self._reset_toolset_state()
+        return True
+
     async def run_query(
         self,
         query: str,
@@ -110,6 +164,7 @@ class BaseAgent(AgentCore, ABC):
             # We should let it handle tool errors and pass them to the LLM for adjustment
             # Only catch critical errors that prevent execution entirely
             try:
+                self._reset_toolset_state()
                 result = await self.agent.run(
                     message_content, message_history=self.message_history
                 )
@@ -121,8 +176,31 @@ class BaseAgent(AgentCore, ABC):
                     logger.warning("Empty result from agent execution")
                     return {"output": "Error: Agent returned empty result."}
             except Exception as e:
-                # Only log the error - don't retry the entire agent.run()
-                # The agent already has internal retries configured via the 'retries' parameter
+                # If an MCP server is down, remove it and retry once
+                error_str = str(e).lower()
+                is_mcp_error = any(
+                    indicator in error_str
+                    for indicator in [
+                        "session terminated",
+                        "mcperror",
+                        "connection closed",
+                    ]
+                )
+                if is_mcp_error and await self._remove_bad_toolsets_and_rebuild(e):
+                    logger.info("Retrying query after removing unhealthy MCP server(s)")
+                    try:
+                        result = await self.agent.run(
+                            message_content,
+                            message_history=self.message_history,
+                        )
+                        if result:
+                            self.usage = result.usage()
+                            self.message_history = result.all_messages()
+                            return result
+                    except Exception as retry_err:
+                        logger.error(f"Retry also failed: {retry_err}")
+                        return {"output": f"Error: {str(retry_err)}"}
+
                 logger.error(f"Critical error during agent execution: {e}")
                 return {"output": f"Error: {str(e)}"}
 
@@ -205,6 +283,7 @@ class BaseAgent(AgentCore, ABC):
                     FinalResultEvent,
                 )
 
+                self._reset_toolset_state()
                 async for event in self.agent.run_stream_events(
                     message_content, message_history=self.message_history
                 ):
@@ -318,7 +397,6 @@ class BaseAgent(AgentCore, ABC):
                         logger.error(
                             f"  Sub-exception {idx}: {type(exc).__name__}: {exc}"
                         )
-                        # Try to get the traceback for each exception
                         try:
                             tb_lines = traceback.format_exception(
                                 type(exc), exc, exc.__traceback__
@@ -340,6 +418,95 @@ class BaseAgent(AgentCore, ABC):
                     logger.error(f"Full error details:{error_traceback}")
                 else:
                     logger.error(f"Stream traceback:", exc_info=True)
+
+                # If this looks like an MCP connection error, try to remove
+                # the bad server(s) and retry the stream once.
+                actual_str = str(actual_error).lower()
+                is_mcp_error = any(
+                    indicator in actual_str
+                    for indicator in [
+                        "session terminated",
+                        "mcperror",
+                        "connection closed",
+                    ]
+                )
+                if is_mcp_error and await self._remove_bad_toolsets_and_rebuild(
+                    actual_error
+                ):
+                    logger.info(
+                        "Retrying stream after removing unhealthy MCP server(s)"
+                    )
+                    try:
+                        self._reset_toolset_state()
+                        async for event in self.agent.run_stream_events(
+                            message_content,
+                            message_history=self.message_history,
+                        ):
+                            try:
+                                if isinstance(event, AgentRunResultEvent):
+                                    self.usage = event.result.usage()
+                                    self.message_history = event.result.all_messages()
+                                    continue
+                                if isinstance(event, PartDeltaEvent):
+                                    if isinstance(event.delta, TextPartDelta):
+                                        text_chunk = event.delta.content_delta
+                                        if text_chunk:
+                                            full_text += text_chunk
+                                            yield {
+                                                "type": "text_delta",
+                                                "content": text_chunk,
+                                            }
+                                    elif isinstance(event.delta, ThinkingPartDelta):
+                                        thinking_chunk = event.delta.content_delta
+                                        if thinking_chunk:
+                                            full_thinking += thinking_chunk
+                                            yield {
+                                                "type": "thinking_delta",
+                                                "content": thinking_chunk,
+                                            }
+                                elif isinstance(event, FunctionToolCallEvent):
+                                    yield {
+                                        "type": "tool_call",
+                                        "tool_name": event.part.tool_name,
+                                        "tool_args": event.part.args,
+                                    }
+                                elif isinstance(event, FunctionToolResultEvent):
+                                    result_content = getattr(
+                                        event.result,
+                                        "content",
+                                        str(event.result),
+                                    )
+                                    yield {
+                                        "type": "tool_result",
+                                        "tool_name": getattr(
+                                            event, "tool_name", "unknown"
+                                        ),
+                                        "content": result_content,
+                                    }
+                            except Exception:
+                                continue
+
+                        yield {
+                            "type": "final",
+                            "content": full_text,
+                            "thinking": full_thinking or None,
+                            "usage": {
+                                "input_tokens": self.usage.total_tokens
+                                if hasattr(self.usage, "total_tokens")
+                                else 0,
+                                "output_tokens": self.usage.total_tokens
+                                if hasattr(self.usage, "total_tokens")
+                                else 0,
+                            },
+                        }
+                        return  # retry succeeded, skip the error yield
+                    except Exception as retry_err:
+                        logger.error(f"Retry stream also failed: {retry_err}")
+                        yield {
+                            "type": "error",
+                            "content": f"Stream error (retry failed): {retry_err}",
+                        }
+                        return
 
                 yield {"type": "error", "content": error_msg}
 
@@ -435,22 +602,26 @@ class BaseAgent(AgentCore, ABC):
             MCPServerStdio,
         )
 
+        self._reset_toolset_state()
         server_info = []
 
         for toolset in self.toolsets:
-            logger.info(f"Gathering info for toolset: {type(toolset).__name__}")
+            # Unwrap ToolFilterWrapper to get at the actual MCP server
+            inner = getattr(toolset, "wrapped_toolset", toolset)
+
+            logger.info(f"Gathering info for toolset: {type(inner).__name__}")
             info = {
-                "server_type": type(toolset).__name__.replace("MCPServer", "").lower(),
+                "server_type": type(inner).__name__.replace("MCPServer", "").lower(),
                 "server_id": None,
                 "tools": [],
             }
 
-            if isinstance(toolset, MCPServerStdio):
+            if isinstance(inner, MCPServerStdio):
                 info["server_id"] = (
-                    f"{toolset.command} {' '.join(toolset.args) if toolset.args else ''}"
+                    f"{inner.command} {' '.join(inner.args) if inner.args else ''}"
                 )
-            elif isinstance(toolset, (MCPServerSSE, MCPServerStreamableHTTP)):
-                info["server_id"] = toolset.url
+            elif isinstance(inner, (MCPServerSSE, MCPServerStreamableHTTP)):
+                info["server_id"] = inner.url
 
             try:
                 tools = await toolset.list_tools()
